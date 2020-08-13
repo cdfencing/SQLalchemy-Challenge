@@ -36,8 +36,9 @@ app = Flask(__name__)
 # Flask Routes
 ##################################
 
-# @app.route("/")
-# def welcome():
+@app.route("/")
+def welcome():
+    return jsonify("welcome")
 
 
 if __name__ == '__main__':
