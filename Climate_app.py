@@ -47,31 +47,60 @@ def welcome():
 
 @app.route("/api/v1.0/precipitation")
 def precipitation():
+    session = Session(engine)    
     Precipitation_last_year = session.query(Measurement.date, func.avg(Measurement.prcp)).filter(Measurement.date > '2016-08-22').group_by(Measurement.date).all()
     return jsonify(Precipitation_last_year)
 
 @app.route("/api/v1.0/stations")
 def station():
+    session = Session(engine)
     Station_stats = session.query(Station.station, Station.name).all()
     return jsonify(Station_stats)
 
-@app.route("/api/v1.0/tobs") #NEED TO DO JUST THE TOP STATION!!!!!
+@app.route("/api/v1.0/tobs") 
 def tobs():
-    Top_station_data = session.query(Measurement.date, Measurement.station, Measurement.tobs).filter(Measurement.date > '2016-08-22').all()
+    session = Session(engine)
+    Station_stats = session.query(Measurement.station, func.count(Measurement.station)).group_by(Measurement.station).order_by(func.count(Measurement.station).desc()).all()
+    Most_active_station = Station_stats[0][0]
+    session.query(func.min(Measurement.tobs), 
+        func.avg(Measurement.tobs), 
+        func.max(Measurement.tobs)).filter(Measurement.station == Most_active_station).all()
+    
+    
+    Top_station_data = session.query(Measurement.station, Measurement.tobs).filter(Measurement.station == Most_active_station).filter(Measurement.date > '2016-08-22').all()
+    
     return jsonify(Top_station_data)
     
-@app.route("/api/v1.0/<start>") #getting error
-def onlystartdate(date):
-    
-    start_temp_results = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= date).all()
-    return jsonify(start_temp_results)
+@app.route("/api/v1.0/<start_date>") 
+def onlystartdate(start_date):
+    session = Session(engine)
+    start_temp_results = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= start_date).all()
+    #place results in a dictionary
 
-@app.route("/api/v1.0/<start>/<end>") #getting null
+    single_date = []
+
+    for i in start_temp_results:
+        single_date_dict ={}
+        single_date_dict["Min Temp"] = start_temp_results[0][0]
+        single_date_dict["Max Temp"] = start_temp_results[0][1]
+        single_date_dict["Avg Temp"] = start_temp_results[0][2]
+        single_date.append(single_date_dict)
+    return jsonify(single_date)
+
+@app.route("/api/v1.0/<start>/<end>") 
 def StartandEndDate(start,end):
-    
-    start_end_temp_results = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= end).all()
-    return jsonify(start_end_temp_results)
+    session = Session(engine)
+    range_temp_results = session.query(func.min(Measurement.tobs), func.max(Measurement.tobs), func.avg(Measurement.tobs)).filter(Measurement.date >= start).filter(Measurement.date <= end).all()
 
+    range_date = []
+
+    for i in range_temp_results:
+        range_date_dict ={}
+        range_date_dict["Min Temp"] = range_temp_results[0][0]
+        range_date_dict["Max Temp"] = range_temp_results[0][1]
+        range_date_dict["Avg Temp"] = range_temp_results[0][2]
+        range_date.append(range_date_dict)
+    return jsonify(range_date)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
